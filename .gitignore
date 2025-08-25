@@ -125,7 +125,6 @@ migrations/
 *.db-journal
 
 # Configuration files (don't commit sensitive data!)
-config.py
 *.env
 .env.local
 .env.production
