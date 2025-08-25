@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 class WeatherService:
     def __init__(self):
         # Use MeteoSwiss API as specified in requirements
-        self.base_url = "https://api.open-meteo.com/v1/meteoswiss"
+        self.base_url = "https://api.open-meteo.com/v1/forecast"
     
     def fetch_weather_data(self, lat, lon):
         """Fetch weather data from Open-Meteo MeteoSwiss API for past 2 days"""

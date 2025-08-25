@@ -31,7 +31,7 @@ A Flask-based REST API service that fetches weather data from the Open-Meteo Met
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Ramkumarrja/WeatherAPI-Service.git
 cd WeatherAPI-Service
 ```
 
@@ -46,7 +46,7 @@ The service will be available at `http://localhost:5000`
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Ramkumarrja/WeatherAPI-Service.git
 cd WeatherAPI-Service
 ```
 
@@ -187,7 +187,7 @@ WeatherAPI-Service/
 ## API Specifications
 
 The service uses the **Open-Meteo MeteoSwiss API**:
-- Base URL: `https://api.open-meteo.com/v1/meteoswiss`
+- Base URL: `https://api.open-meteo.com/v1/forecast`
 - Parameters: `latitude`, `longitude`, `hourly=temperature_2m,relative_humidity_2m`
 - Data Range: Past 2 days from current date
 
