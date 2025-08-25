@@ -54,7 +54,7 @@ coverage.xml
 *.pot
 
 # Flask stuff
-instance/
+# instance/
 .webassets-cache
 
 # Scrapy stuff:
@@ -102,9 +102,9 @@ venv.bak/
 *~
 
 # Database
-*.db
-*.sqlite
-*.sqlite3
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # Logs
 *.log
@@ -116,13 +116,13 @@ logs/
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
+# ehthumbs.db
+# Thumbs.db
 
 # Flask specific
-instance/
+# instance/
 migrations/
-*.db-journal
+# *.db-journal
 
 # Configuration files (don't commit sensitive data!)
 *.env
