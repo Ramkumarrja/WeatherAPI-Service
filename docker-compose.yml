@@ -1,8 +1,13 @@
 version: "3.9"
 services:
-  fastapi:
+  weather-api:
     build: .
     ports:
-      - "8000:8000"
+      - "5000:5000"
     volumes:
       - .:/app
+      - ./instance:/app/instance
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+    restart: unless-stopped

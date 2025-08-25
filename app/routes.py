@@ -10,18 +10,32 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/weather-report', methods=['GET'])
 def weather_report():
     try:
-        lat = request.args.get('lat', type=float, default=52.52)  # Default to Berlin
-        lon = request.args.get('lon', type=float, default=13.41)  # Default to Berlin
+        lat = request.args.get('lat', type=float)
+        lon = request.args.get('lon', type=float)
+        
+        # Validate required parameters
+        if lat is None or lon is None:
+            return jsonify({'error': 'Missing required parameters: lat and lon'}), 400
         
         if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
-            return jsonify({'error': 'Invalid coordinates'}), 400
+            return jsonify({'error': 'Invalid coordinates. Latitude must be between -90 and 90, longitude between -180 and 180'}), 400
         
         # Fetch and process data
         weather_service = WeatherService()
         raw_data = weather_service.fetch_weather_data(lat, lon)
         processed_data = weather_service.process_weather_data(raw_data, lat, lon)
         
+        if not processed_data:
+            return jsonify({'error': 'No weather data available for the specified location and time period'}), 404
+        
+        # Remove existing data for this location to avoid duplicates
+        db.session.query(WeatherData).filter(
+            WeatherData.latitude == lat,
+            WeatherData.longitude == lon
+        ).delete()
+        
         # Store in database
+        records_added = 0
         for data in processed_data:
             weather_record = WeatherData(
                 timestamp=data['timestamp'],
@@ -29,21 +43,24 @@ def weather_report():
                 humidity=data['humidity'],
                 latitude=data['latitude'],
                 longitude=data['longitude'],
-                is_forecast=data.get('is_forecast', True)  # Default to True for forecast
+                is_forecast=data.get('is_forecast', False)
             )
             db.session.add(weather_record)
+            records_added += 1
         
         db.session.commit()
         
         return jsonify({
-            'message': 'Weather forecast data fetched and stored successfully',
-            'records_processed': len(processed_data),
+            'message': 'Weather data fetched and stored successfully',
+            'records_processed': records_added,
             'latitude': lat,
             'longitude': lon,
-            'data_type': 'forecast'
+            'data_type': 'historical_past_2_days',
+            'time_range': f"{processed_data[0]['timestamp'].strftime('%Y-%m-%d %H:%M')} to {processed_data[-1]['timestamp'].strftime('%Y-%m-%d %H:%M')}"
         })
         
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
     
 

@@ -1,55 +1,191 @@
 import pandas as pd
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils.dataframe import dataframe_to_rows
 from io import BytesIO
-from flask import send_file
+from datetime import datetime
 
 class ExcelService:
-    @staticmethod
-    def generate_excel(weather_data):
-        """Generate Excel file from weather data"""
-        data_list = []
+    def __init__(self):
+        pass
+    
+    def generate_excel(self, weather_data):
+        """Generate Excel file with weather data for last 48 hours"""
+        if not weather_data:
+            return self._generate_empty_excel()
+        
+        # Create workbook and worksheet
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Weather Data"
+        
+        # Set up headers
+        headers = ['timestamp', 'temperature_2m', 'relative_humidity_2m']
+        ws.append(headers)
+        
+        # Style headers
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        for col_num, header in enumerate(headers, 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.alignment = header_alignment
+        
+        # Add data rows
         for data in weather_data:
-            if hasattr(data, 'to_dict'):
-                data_dict = data.to_dict()
-                # Handle None values
-                data_dict['temperature'] = data_dict.get('temperature', 'N/A')
-                data_dict['humidity'] = data_dict.get('humidity', 'N/A')
-                data_list.append(data_dict)
-            else:
-                # Handle dictionary data
-                data['temperature'] = data.get('temperature', 'N/A')
-                data['humidity'] = data.get('humidity', 'N/A')
-                data_list.append(data)
+            row_data = [
+                data.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                data.temperature if data.temperature is not None else 'N/A',
+                data.humidity if data.humidity is not None else 'N/A'
+            ]
+            ws.append(row_data)
         
-        df = pd.DataFrame(data_list)
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
         
-        # Format timestamp
-        if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp']).dt.strftime('%Y-%m-%d %H:%M')
+        # Add metadata sheet
+        metadata_ws = wb.create_sheet("Metadata")
+        self._add_metadata_sheet(metadata_ws, weather_data)
         
-        # Reorder columns for better readability
-        column_order = ['timestamp', 'temperature', 'humidity', 'latitude', 'longitude', 'is_forecast']
-        df = df[[col for col in column_order if col in df.columns]]
+        # Save to buffer
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer
+    
+    def _add_metadata_sheet(self, ws, weather_data):
+        """Add metadata information to a separate sheet"""
+        if not weather_data:
+            ws.append(["No data available"])
+            return
         
-        # Create Excel file in memory
-        output = BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Weather Forecast', index=False)
-            
-            # Format worksheet
-            worksheet = writer.sheets['Weather Forecast']
-            
-            # Set column widths
-            column_widths = {
-                'A': 20,  # timestamp
-                'B': 15,  # temperature
-                'C': 15,  # humidity
-                'D': 12,  # latitude
-                'E': 12,  # longitude
-                'F': 12   # is_forecast
-            }
-            
-            for col, width in column_widths.items():
-                worksheet.column_dimensions[col].width = width
+        sample = weather_data[0]
+        first_date = weather_data[0].timestamp.strftime('%Y-%m-%d %H:%M:%S')
+        last_date = weather_data[-1].timestamp.strftime('%Y-%m-%d %H:%M:%S')
         
-        output.seek(0)
-        return output
+        # Count available data points
+        temp_count = sum(1 for d in weather_data if d.temperature is not None)
+        humidity_count = sum(1 for d in weather_data if d.humidity is not None)
+        
+        # Calculate ranges
+        valid_temps = [d.temperature for d in weather_data if d.temperature is not None]
+        valid_humidities = [d.humidity for d in weather_data if d.humidity is not None]
+        
+        metadata = [
+            ["Report Information", ""],
+            ["Generated At", datetime.now().strftime('%Y-%m-%d %H:%M:%S')],
+            ["", ""],
+            ["Location Information", ""],
+            ["Latitude", sample.latitude],
+            ["Longitude", sample.longitude],
+            ["", ""],
+            ["Data Range", ""],
+            ["Start Date", first_date],
+            ["End Date", last_date],
+            ["Total Records", len(weather_data)],
+            ["", ""],
+            ["Data Quality", ""],
+            ["Temperature Records", temp_count],
+            ["Humidity Records", humidity_count],
+            ["", ""],
+            ["Statistics", ""],
+        ]
+        
+        if valid_temps:
+            metadata.extend([
+                ["Min Temperature (°C)", f"{min(valid_temps):.1f}"],
+                ["Max Temperature (°C)", f"{max(valid_temps):.1f}"],
+                ["Avg Temperature (°C)", f"{sum(valid_temps)/len(valid_temps):.1f}"],
+            ])
+        
+        if valid_humidities:
+            metadata.extend([
+                ["Min Humidity (%)", f"{min(valid_humidities):.1f}"],
+                ["Max Humidity (%)", f"{max(valid_humidities):.1f}"],
+                ["Avg Humidity (%)", f"{sum(valid_humidities)/len(valid_humidities):.1f}"],
+            ])
+        
+        metadata.extend([
+            ["", ""],
+            ["Data Source", "Open-Meteo MeteoSwiss API"],
+            ["Data Type", "Historical (Past 2 Days)" if not getattr(sample, 'is_forecast', True) else "Forecast"]
+        ])
+        
+        # Add metadata to sheet
+        for row_data in metadata:
+            ws.append(row_data)
+        
+        # Style the metadata sheet
+        for row in ws.iter_rows():
+            for cell in row:
+                if cell.column == 1 and cell.value and cell.value.endswith("Information"):
+                    cell.font = Font(bold=True, size=12)
+                    cell.fill = PatternFill(start_color="D9E1F2", end_color="D9E1F2", fill_type="solid")
+                elif cell.column == 1 and cell.value:
+                    cell.font = Font(bold=True)
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+    
+    def _generate_empty_excel(self):
+        """Generate Excel file when no data is available"""
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "Weather Data"
+        
+        # Add headers
+        headers = ['timestamp', 'temperature_2m', 'relative_humidity_2m']
+        ws.append(headers)
+        
+        # Add empty row with message
+        ws.append(['No data available for the selected time period', '', ''])
+        
+        # Style headers
+        header_font = Font(bold=True, color="FFFFFF")
+        header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
+        
+        for col_num in range(1, 4):
+            cell = ws.cell(row=1, column=col_num)
+            cell.font = header_font
+            cell.fill = header_fill
+        
+        # Auto-adjust column widths
+        for column in ws.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = min(max_length + 2, 50)
+            ws.column_dimensions[column_letter].width = adjusted_width
+        
+        buffer = BytesIO()
+        wb.save(buffer)
+        buffer.seek(0)
+        return buffer

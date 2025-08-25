@@ -6,11 +6,11 @@ class WeatherData(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False, index=True)
-    temperature = db.Column(db.Float, nullable=True)  # Allow null for missing data
-    humidity = db.Column(db.Float, nullable=True)     # Allow null for missing data
+    temperature = db.Column(db.Float, nullable=True)  
+    humidity = db.Column(db.Float, nullable=True)
     latitude = db.Column(db.Float, nullable=False)
     longitude = db.Column(db.Float, nullable=False)
-    is_forecast = db.Column(db.Boolean, default=False)  # Track if it's forecast data
+    is_forecast = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def to_dict(self):

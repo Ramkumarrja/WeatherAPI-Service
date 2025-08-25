@@ -1,251 +1,238 @@
-I'll update the README.md with the correct API information. Here's the updated version:
+# Weather API Service
 
-# Weather Report API
-
-A Flask-based backend service that fetches weather forecast data from Open-Meteo API, stores it in SQLite, and provides Excel/PDF export functionality.
+A Flask-based REST API service that fetches weather data from the Open-Meteo MeteoSwiss API, stores it in a SQLite database, and provides endpoints to export data in Excel and PDF formats with charts.
 
 ## Features
 
-- 🌤️ Fetch 7-day weather forecast data from Open-Meteo API
-- 💾 Store weather data in SQLite database
-- 📊 Export data to Excel format (.xlsx)
-- 📄 Generate PDF reports with charts
-- 🐳 Docker container support
-- 🚀 RESTful API endpoints
+- **Weather Data Fetching**: Retrieves temperature and humidity data for the past 2 days from Open-Meteo MeteoSwiss API
+- **REST API Endpoints**: 
+  - `GET /weather-report?lat={lat}&lon={lon}` - Fetch and store weather data
+  - `GET /export/excel` - Export data to Excel format (.xlsx)
+  - `GET /export/pdf` - Export data to PDF with charts
+  - `GET /health` - Health check endpoint
+- **Data Storage**: SQLite database with proper indexing
+- **Excel Export**: Professional Excel files with metadata and styling
+- **PDF Reports**: PDF reports with matplotlib charts using ReportLab (Windows compatible)
+- **Docker Support**: Fully containerized application
 
-## API Endpoints
+## Requirements
 
-### 1. Health Check
-- **GET** `/health`
-- **Description**: Check if the service is running
-- **Response**: 
-  ```json
-  {
-    "status": "healthy",
-    "service": "weather-service"
-  }
-  ```
-
-### 2. Fetch Weather Data
-- **GET** `/weather-report?lat={latitude}&lon={longitude}`
-- **Parameters**:
-  - `lat` (required): Latitude (-90 to 90)
-  - `lon` (required): Longitude (-180 to 180)
-- **Default**: `lat=52.52&lon=13.41` (Berlin)
-- **Response**:
-  ```json
-  {
-    "message": "Weather forecast data fetched and stored successfully",
-    "records_processed": 168,
-    "latitude": 52.52,
-    "longitude": 13.41,
-    "data_type": "forecast"
-  }
-  ```
-
-### 3. Export Excel
-- **GET** `/export/excel?hours={hours}`
-- **Parameters**:
-  - `hours` (optional): Number of hours to export (1-168)
-  - **Default**: 48 hours
-- **Response**: Excel file (`weather_data.xlsx`) with columns:
-  - timestamp | temperature | humidity | latitude | longitude | is_forecast
-
-### 4. Export PDF Report
-- **GET** `/export/pdf?hours={hours}`
-- **Parameters**:
-  - `hours` (optional): Number of hours to include (1-168)
-  - **Default**: 48 hours
-- **Response**: PDF file (`weather_report.pdf`) containing:
-  - Title and metadata
-  - Temperature and humidity chart
-  - Data table with sample records
+- Python 3.11+
+- Flask 2.3.3
+- SQLAlchemy 2.0.23
+- WeasyPrint 61.2
+- Matplotlib 3.8.2
+- OpenPyXL 3.1.2
+- Docker & Docker Compose (for containerized deployment)
 
 ## Installation & Setup
 
-### Prerequisites
-- Python 3.8+
-- Docker (optional)
-- Git
+### Option 1: Docker (Recommended)
 
-### Method 1: Run Locally (without Docker)
-
+1. Clone the repository:
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd weather-service-flask
+git clone <repository-url>
+cd WeatherAPI-Service
+```
 
-# Create virtual environment
+2. Build and run with Docker Compose:
+```bash
+docker-compose up --build
+```
+
+The service will be available at `http://localhost:5000`
+
+### Option 2: Local Development
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd WeatherAPI-Service
+```
+
+2. Create a virtual environment:
+```bash
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
-# Install dependencies
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
+```
 
-# Run the application
+4. Run the application:
+```bash
 python run.py
 ```
 
-The app will start at `http://localhost:5000`
+The service will be available at `http://localhost:5000`
 
-### Method 2: Run with Docker
+## API Usage
+
+### 1. Fetch Weather Data
+
+Fetch weather data for the past 2 days and store in database:
 
 ```bash
-# Build and run with Docker
-docker build -t weather-app .
-docker run -p 5000:5000 weather-app
-
-# Or using docker-compose
-docker-compose up
+curl "http://localhost:5000/weather-report?lat=47.37&lon=8.55"
 ```
 
-## Usage Examples
+**Parameters:**
+- `lat` (required): Latitude (-90 to 90)
+- `lon` (required): Longitude (-180 to 180)
 
-### Using curl
+**Response:**
+```json
+{
+  "message": "Weather data fetched and stored successfully",
+  "records_processed": 48,
+  "latitude": 47.37,
+  "longitude": 8.55,
+  "data_type": "historical_past_2_days",
+  "time_range": "2024-01-01 00:00 to 2024-01-03 00:00"
+}
+```
+
+### 2. Export to Excel
+
+Export the last 48 hours of data to Excel format:
+
 ```bash
-# Health check
-curl http://localhost:5000/health
-
-# Fetch weather data for Berlin
-curl "http://localhost:5000/weather-report?lat=52.52&lon=13.41"
-
-# Fetch weather data for New York
-curl "http://localhost:5000/weather-report?lat=40.71&lon=-74.01"
-
-# Export Excel for last 72 hours
-curl "http://localhost:5000/export/excel?hours=72" --output weather_data.xlsx
-
-# Export PDF report
-curl "http://localhost:5000/export/pdf?hours=48" --output weather_report.pdf
+curl "http://localhost:5000/export/excel" -o weather_data.xlsx
 ```
 
-### Using Postman
-1. Import the Postman collection from `/postman/` folder
-2. Set environment variables:
-   - `base_url`: `http://localhost:5000`
-3. Run requests from the collection
+**Optional Parameters:**
+- `hours` (default: 48): Number of hours of data to export
 
-### Using Web Browser
-- Health: http://localhost:5000/health
-- Weather: http://localhost:5000/weather-report?lat=52.52&lon=13.41
-- Excel: http://localhost:5000/export/excel (auto-download)
-- PDF: http://localhost:5000/export/pdf (auto-download)
+**Output:** `weather_data.xlsx` with:
+- Weather data sheet with columns: timestamp | temperature_2m | relative_humidity_2m
+- Metadata sheet with statistics and information
 
-## Example Output Files
+### 3. Export to PDF
 
-### weather_data.xlsx
-Contains structured weather data with columns:
-- Timestamp (ISO format)
-- Temperature (°C)
-- Humidity (%)
-- Latitude
-- Longitude
-- Forecast flag
+Export the last 48 hours of data to PDF with charts:
 
-### weather_report.pdf
-Contains:
-- Professional title and header
-- Location metadata and date range
-- Interactive temperature/humidity chart
+```bash
+curl "http://localhost:5000/export/pdf" -o weather_report.pdf
+```
+
+**Optional Parameters:**
+- `hours` (default: 48): Number of hours of data to export
+
+**Output:** `weather_report.pdf` with:
+- Title & metadata (location, date range)
+- Line chart showing temperature & humidity vs time
 - Sample data table
-- Summary statistics
 
-## API Response Structure
+### 4. Health Check
 
-The service uses Open-Meteo API which returns:
-```json
-{
-  "latitude": 52.52,
-  "longitude": 13.41,
-  "hourly": {
-    "time": ["2025-08-25T00:00", "2025-08-25T01:00", ...],
-    "temperature_2m": [13.1, 12.4, ...],
-    "relative_humidity_2m": [73.0, 75.0, ...]
-  }
-}
+Check service status:
+
+```bash
+curl "http://localhost:5000/health"
 ```
 
-## Error Handling
+## Example Usage Workflow
 
-The API returns appropriate HTTP status codes:
-- `200 OK`: Success
-- `400 Bad Request`: Invalid parameters
-- `500 Internal Server Error`: Server-side issues
+1. **Fetch data for Zurich, Switzerland:**
+```bash
+curl "http://localhost:5000/weather-report?lat=47.37&lon=8.55"
+```
 
-Error responses include descriptive messages:
-```json
-{
-  "error": "Invalid coordinates: latitude must be between -90 and 90"
-}
+2. **Export to Excel:**
+```bash
+curl "http://localhost:5000/export/excel" -o weather_data.xlsx
+```
+
+3. **Export to PDF:**
+```bash
+curl "http://localhost:5000/export/pdf" -o weather_report.pdf
 ```
 
 ## Project Structure
 
 ```
-weather-service-flask/
+WeatherAPI-Service/
 ├── app/
 │   ├── __init__.py          # Flask app factory
-│   ├── models.py           # SQLAlchemy models
-│   ├── routes.py           # API endpoints
-│   ├── services/
-│   │   ├── weather_service.py    # API data fetching
-│   │   ├── excel_service.py      # Excel generation
-│   │   └── pdf_service_alt.py    # PDF generation
-│   └── config.py           # Configuration
+│   ├── config.py            # Configuration settings
+│   ├── models.py            # Database models
+│   ├── routes.py            # API endpoints
+│   └── services/
+│       ├── weather_service.py  # Weather API integration
+│       ├── excel_service.py    # Excel export functionality
+│       └── pdf_service.py      # PDF report generation
 ├── instance/
-│   └── weather.db          # SQLite database
+│   └── weather.db           # SQLite database (auto-created)
+├── docker-compose.yml       # Docker Compose configuration
+├── Dockerfile              # Docker image configuration
 ├── requirements.txt        # Python dependencies
 ├── run.py                 # Application entry point
-├── Dockerfile             # Docker configuration
 └── README.md              # This file
 ```
 
-## Technologies Used
+## Database Schema
 
-- **Backend**: Flask, Flask-SQLAlchemy
-- **Database**: SQLite
-- **API Client**: Requests
-- **Excel Export**: pandas, openpyxl
-- **PDF Generation**: ReportLab, Matplotlib
-- **Containerization**: Docker
-- **API Documentation**: OpenAPI (via Postman)
+**WeatherData Table:**
+- `id`: Primary key
+- `timestamp`: DateTime (indexed)
+- `temperature`: Float (°C)
+- `humidity`: Float (%)
+- `latitude`: Float
+- `longitude`: Float
+- `is_forecast`: Boolean
+- `created_at`: DateTime
+
+## API Specifications
+
+The service uses the **Open-Meteo MeteoSwiss API**:
+- Base URL: `https://api.open-meteo.com/v1/meteoswiss`
+- Parameters: `latitude`, `longitude`, `hourly=temperature_2m,relative_humidity_2m`
+- Data Range: Past 2 days from current date
+
+## Error Handling
+
+The API provides comprehensive error handling:
+- **400 Bad Request**: Invalid parameters or coordinates
+- **404 Not Found**: No data available for specified location/time
+- **500 Internal Server Error**: Server-side errors with detailed messages
 
 ## Development
 
 ### Running Tests
+
 ```bash
-# Add tests to the tests/ directory
+# Add your test commands here
 python -m pytest tests/
 ```
 
-### Database Management
-```bash
-# Initialize database (auto-created on first run)
-python -c "from app import create_app, db; app = create_app(); with app.app_context(): db.create_all()"
-
-# View database content
-sqlite3 instance/weather.db
-```
-
 ### Environment Variables
-Create a `.env` file for configuration:
-```env
-FLASK_ENV=development
-DATABASE_URL=sqlite:///instance/weather.db
-SECRET_KEY=your-secret-key
-```
 
-## Support
+- `FLASK_ENV`: Set to `development` for debug mode
+- `FLASK_DEBUG`: Set to `1` for debug mode
 
-For issues and questions:
-1. Check the Open-Meteo API status: https://open-meteo.com/
-2. Review Flask documentation: https://flask.palletsprojects.com/
-3. Check existing GitHub issues
+## Docker Configuration
+
+The application is fully containerized with:
+- **Base Image**: Python 3.11-slim
+- **System Dependencies**: WeasyPrint requirements (Cairo, Pango, etc.)
+- **Port**: 5000
+- **Volumes**: Code and database persistence
+- **Auto-restart**: Unless stopped
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-MIT License - see LICENSE file for details.
+This project is licensed under the MIT License.
 
----
+## Support
 
-**Note**: This service uses the [Open-Meteo Weather API](https://open-meteo.com/) which provides free weather forecast data. Please review their terms of service for usage guidelines.
+For issues and questions, please create an issue in the repository.

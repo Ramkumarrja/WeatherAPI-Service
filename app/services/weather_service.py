@@ -7,15 +7,22 @@ logger = logging.getLogger(__name__)
 
 class WeatherService:
     def __init__(self):
-        self.base_url = "https://api.open-meteo.com/v1/forecast"
+        # Use MeteoSwiss API as specified in requirements
+        self.base_url = "https://api.open-meteo.com/v1/meteoswiss"
     
     def fetch_weather_data(self, lat, lon):
-        """Fetch weather forecast data from Open-Meteo API"""
+        """Fetch weather data from Open-Meteo MeteoSwiss API for past 2 days"""
+        # Calculate date range for past 2 days
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=2)
+        
         params = {
             "latitude": lat,
             "longitude": lon,
             "hourly": "temperature_2m,relative_humidity_2m",
-            "forecast_days": 7  # Get 7-day forecast
+            "start_date": start_date.strftime("%Y-%m-%d"),
+            "end_date": end_date.strftime("%Y-%m-%d"),
+            "timezone": "auto"
         }
         
         try:
@@ -24,10 +31,10 @@ class WeatherService:
             return response.json()
         except requests.RequestException as e:
             logger.error(f"API request failed: {e}")
-            raise
+            raise Exception(f"Failed to fetch weather data: {str(e)}")
     
     def process_weather_data(self, raw_data, lat, lon):
-        """Process raw API forecast data into structured format"""
+        """Process raw API data into structured format"""
         processed_data = []
         hourly = raw_data.get("hourly", {})
         
@@ -36,20 +43,28 @@ class WeatherService:
         temperatures = hourly.get("temperature_2m", [])
         humidities = hourly.get("relative_humidity_2m", [])
         
-        # Check if we have humidity data, if not, set to None
-        has_humidity = humidities and len(humidities) == len(times)
+        # Ensure all arrays have the same length
+        min_length = min(len(times), len(temperatures), len(humidities))
         
-        for i, timestamp_str in enumerate(times):
-            # Handle potential missing humidity data
-            humidity = humidities[i] if has_humidity and i < len(humidities) else None
-            
-            processed_data.append({
-                "timestamp": datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')),
-                "temperature": temperatures[i] if i < len(temperatures) else None,
-                "humidity": humidity,
-                "latitude": lat,
-                "longitude": lon,
-                "is_forecast": True  # Mark as forecast data
-            })
+        for i in range(min_length):
+            try:
+                # Parse timestamp - handle different formats
+                timestamp_str = times[i]
+                if 'T' in timestamp_str:
+                    timestamp = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
+                else:
+                    timestamp = datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M")
+                
+                processed_data.append({
+                    "timestamp": timestamp,
+                    "temperature": temperatures[i] if temperatures[i] is not None else None,
+                    "humidity": humidities[i] if humidities[i] is not None else None,
+                    "latitude": lat,
+                    "longitude": lon,
+                    "is_forecast": False  # This is historical data for past 2 days
+                })
+            except (ValueError, IndexError) as e:
+                logger.warning(f"Skipping invalid data point at index {i}: {e}")
+                continue
         
         return processed_data
