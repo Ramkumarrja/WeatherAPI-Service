@@ -1,0 +1,59 @@
+{
+	"info": {
+		"_postman_id": "103e77d1-c478-43e3-ade6-805b1ba2fdeb",
+		"name": "weather",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "34895406"
+	},
+	"item": [
+		{
+			"name": "Fetch and store weather data",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/weather-report?lat=52.52&lon=13.41",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"weather-report"
+					],
+					"query": [
+						{
+							"key": "lat",
+							"value": "52.52"
+						},
+						{
+							"key": "lon",
+							"value": "13.41"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Export data to Excel format",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:5000/export/excel",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "5000",
+					"path": [
+						"export",
+						"excel"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
